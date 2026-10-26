@@ -1,0 +1,26 @@
+{
+  "min_synapses": 5,
+  "right_kenyon_cells": 2597,
+  "kenyon_cells_kept": 2364,
+  "alpn_total": 685,
+  "pn_kept": 149,
+  "pn_kept_uniglomerular": 120,
+  "pn_kept_left": 7,
+  "edges": 10505,
+  "synapses": 143275,
+  "pairs_below_threshold": 3255,
+  "synapse_share_in_right_calyx": 0.9863,
+  "kc_in_degree_mean": 4.444,
+  "kc_in_degree_quantiles_5_50_95": [
+    1.0,
+    5.0,
+    7.0
+  ],
+  "pn_out_degree_mean": 70.503,
+  "pn_out_degree_max": 480,
+  "kc_classes": {
+    "gamma": 1127,
+    "alpha/beta": 811,
+    "alpha'/beta'": 426
+  }
+}

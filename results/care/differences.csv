@@ -1,0 +1,13 @@
+a,b,difference,ci_low,ci_high,share_above_zero
+fly_flywire_s0+fly_flywire_s1+fly_flywire_s2,fly_shuffled_s0+fly_shuffled_s1+fly_shuffled_s2,-0.13240035930648114,-0.29347406534684367,0.028422738324930412,0.1045
+fly_flywire_s0+fly_flywire_s1+fly_flywire_s2,fly_flyhash_s0+fly_flyhash_s1+fly_flyhash_s2,-0.14437054343155864,-0.3028433139147569,0.01518818787151494,0.1015
+fly_flywire_s0+fly_flywire_s1+fly_flywire_s2,fly_dense_s0+fly_dense_s1+fly_dense_s2,-0.11434021380221493,-0.27178821426610594,0.29210864511633255,0.4525
+fly_flyhash_full_s0+fly_flyhash_full_s1+fly_flyhash_full_s2,fly_flyhash_s0+fly_flyhash_s1+fly_flyhash_s2,0.02601802784974011,-0.02564121795482621,0.21310449581738222,0.891
+fly_flywire_s0+fly_flywire_s1+fly_flywire_s2,pca,-0.2065132276139499,-0.39568166430917834,-0.1473245968384683,0.0
+fly_flywire_s0+fly_flywire_s1+fly_flywire_s2,autoencoder,-0.19475664941970539,-0.39262486817876724,-0.12827980892036028,0.0
+stream_flywire_gated,fly_flywire_s0+fly_flywire_s1+fly_flywire_s2,0.2038426787487848,0.15877369927367893,0.38343389708305625,1.0
+stream_flywire_ungated,stream_flywire_gated,-0.052758856364632456,-0.5092301542462551,-0.006990516626020132,0.013
+fly_res_flywire_s0+fly_res_flywire_s1+fly_res_flywire_s2,fly_res_shuffled_s0+fly_res_shuffled_s1+fly_res_shuffled_s2,-0.15488898581266358,-0.31372103673187896,0.140291742623611,0.0745
+fly_res_flywire_s0+fly_res_flywire_s1+fly_res_flywire_s2,fly_res_flyhash_s0+fly_res_flyhash_s1+fly_res_flyhash_s2,0.2808577180453571,0.0,0.2990316722715124,0.8705
+fly_res_flywire_s0+fly_res_flywire_s1+fly_res_flywire_s2,pca,-0.220929941198859,-0.5364268881056606,-0.15833966986754575,0.0
+fly_res_flywire_s0+fly_res_flywire_s1+fly_res_flywire_s2,fly_flywire_s0+fly_flywire_s1+fly_flywire_s2,-0.014416713584909091,-0.3061092809288803,0.14991939252853945,0.247

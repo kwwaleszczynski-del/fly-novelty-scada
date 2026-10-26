@@ -1,0 +1,19 @@
+The tables and figures in this folder (results/care/) are derived from the dataset
+
+    Christian Gück, Cyriana Roelofs (Fraunhofer IEE):
+    "Wind Turbine SCADA Data For Early Fault Detection" (CARE to Compare), version of 2025-07-09,
+    Zenodo, https://doi.org/10.5281/zenodo.15846963
+
+described in
+
+    C. Gück, C. M. A. Roelofs, S. Faulstich: "CARE to Compare: A Real-World Benchmark Dataset for Early Fault
+    Detection in Wind Turbine Data", Data 2024, 9(12), 138, https://doi.org/10.3390/data9120138
+
+The dataset is licensed under the Creative Commons Attribution-ShareAlike 4.0 International licence
+(CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/). The material in this folder is an adaptation
+of it (anomaly scores, alarm decisions, evaluation results, synthetic-fault results computed on the SCADA time
+series, and figures of them) and is licensed under CC BY-SA 4.0 as well. The same applies to the data embedded
+in the dashboard docs/index.html.
+
+No raw data from the dataset is contained in this repository. The source code of the repository is licensed
+separately under the MIT licence (see LICENSE in the repository root).

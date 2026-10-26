@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fly novelty SCADA</title>
+<meta name="description" content="The fruit fly's mushroom body novelty detector (FlyHash and the fly Bloom filter) on wind turbine SCADA: real FlyWire wiring against random wiring and standard detectors on the CARE to Compare fault benchmark.">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10); --critical: #d03b3b; --band: rgba(208,59,59,0.10);
+  --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --c5: #e87ba4; --c6: #8a63d2; --neutral: #a8a69f;
+  --b2: #8c6d31; --b3: #d03b3b;
+  --seq0: #f0efec; --seq1: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --critical: #e66767; --band: rgba(230,103,103,0.14);
+    --c1: #3987e5; --c2: #f07a49; --c3: #2bc28b; --c4: #f5b52e; --c5: #f08fb4; --c6: #9d7be0; --neutral: #6b6964;
+    --b2: #b8945a; --b3: #e66767;
+    --seq0: #232322; --seq1: #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --critical: #e66767; --band: rgba(230,103,103,0.14);
+  --c1: #3987e5; --c2: #f07a49; --c3: #2bc28b; --c4: #f5b52e; --c5: #f08fb4; --c6: #9d7be0; --neutral: #6b6964;
+    --b2: #b8945a; --b3: #e66767;
+  --seq0: #232322; --seq1: #3987e5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+       font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 26px; margin: 0 0 6px; font-weight: 650; }
+h2 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
+p { margin: 0 0 10px; color: var(--ink2); max-width: 900px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+        margin-top: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 16px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.tile .v { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.tile .l { font-size: 13px; color: var(--ink2); }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin: 8px 0; }
+label { font-size: 14px; color: var(--ink2); display: flex; gap: 8px; align-items: center; max-width: 100%; }
+select { max-width: 100%; min-width: 0; }
+select, button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border);
+         border-radius: 6px; padding: 4px 10px; }
+button { cursor: pointer; }
+.plot { width: 100%; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+table { border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; width: 100%; }
+th, td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink2); font-weight: 600; }
+.note { font-size: 13px; color: var(--muted); }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink2); margin: 6px 0 0; }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.key.line { width: 14px; height: 3px; border-radius: 0; vertical-align: 3px; }
+.scroll { overflow-x: auto; }
+a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>A fruit fly's novelty detector on wind turbine SCADA</h1>
+  <p>The fly decides whether a smell is new in two steps: about 150 projection neurons (PNs) fan out to about 2,000
+     Kenyon cells (KCs), only the 5 % most excited KCs stay active (a sparse "tag"), and the synapses from the
+     active KCs to one output neuron weaken each time the smell comes back. A tag full of unweakened synapses means
+     "never smelled this". Here the smell is the 10-minute state of a wind turbine, the wiring is the real right
+     mushroom body from the FlyWire connectome, and the question is whether that finds faults early, at what cost,
+     and whether the real wiring beats a random one.</p>
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card">
+    <h2>The expansion: 149 PNs to 2,364 Kenyon cells</h2>
+    <p class="note">Share of KCs of each block (columns, 20 KCs each, grouped by KC class) that receive input from
+       each PN (rows, grouped by glomerulus). Real FlyWire wiring, the same after degree-preserving shuffling, and
+       FlyHash (every KC samples 4 PNs at random).</p>
+    <div class="controls"><label>Wiring <select id="wiring"></select></label></div>
+    <div id="matrix" class="plot" style="height:520px"></div>
+    <div class="two">
+      <div id="indeg" class="plot" style="height:260px"></div>
+      <div id="outdeg" class="plot" style="height:260px"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Alarms on real faults</h2>
+    <p class="note">When each method is in alarm over the prediction section (red: share of the hour's producing
+       rows flagged; every method with its own threshold from the calibration rows). Dashed: the labelled window
+       leading up to the fault (anomaly datasets).</p>
+    <div class="controls"><label>Dataset <select id="event"></select></label></div>
+    <div id="event-desc" class="note"></div>
+    <div id="eventplot" class="plot" style="height:330px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Live replay</h2>
+    <p class="note" id="replay-desc"></p>
+    <div class="controls"><button id="play">Play</button><button id="reset">Reset</button>
+      <span class="note" id="replay-clock"></span></div>
+    <div id="replay" class="plot" style="height:300px"></div>
+    <div id="raster" class="plot" style="height:300px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Methods on CARE to Compare (95 datasets, 45 faults)</h2>
+    <p class="note">CARE score (Gück et al. 2024; 0.5 is what a random detector reaches, and a method that detects
+       no fault at all scores 0). Fly variants: mean of three seeds, the dots are the seeds. Same thresholds and
+       smoothing for every method. Skill: share of the faults detected minus share of the normal datasets flagged.</p>
+    <div id="care" class="plot" style="height:430px"></div>
+    <div class="scroll"><table id="caretable"></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Synthetic faults in the training data (label-free)</h2>
+    <p class="note">Share of injected faults detected (12 h of net alarms), 95 datasets x 2 component temperatures,
+       and the false alarms on the clean data.</p>
+    <div id="inject" class="plot" style="height:400px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Operation</h2>
+    <p class="note">Cost per method on one dataset (wind farm B, 34 signals). The fly detector's learned state is
+       one weight per KC.</p>
+    <div class="scroll"><table id="cost"></table></div>
+    <p class="note" style="margin-top:12px">Share of trials (95 datasets) with an alarm (12 h net) in the six weeks
+       after nothing changes (control), after a change of normal (+5 K step in one temperature, e.g. after service)
+       and during a slow fault (drift to +10 K), for four learning policies.</p>
+    <div id="service" class="plot" style="height:320px"></div>
+  </section>
+
+  <p class="note" style="margin-top:16px">Wiring: FlyWire Consortium, connectome v783,
+     <a href="https://doi.org/10.5281/zenodo.10676866">doi:10.5281/zenodo.10676866</a>, and cell annotations of
+     Schlegel et al. 2024, CC BY 4.0. Faults and SCADA: CARE to Compare, C. Gück and C. Roelofs (Fraunhofer IEE),
+     <a href="https://doi.org/10.5281/zenodo.15846963">doi:10.5281/zenodo.15846963</a>, CC BY-SA 4.0; the scores
+     and results shown on this page are derived from it and are CC BY-SA 4.0 as well. Method: Dasgupta, Stevens,
+     Navlakha 2017 (Science) and Dasgupta, Sheehan, Stevens, Navlakha 2018 (PNAS).
+     Code (MIT): <a href="https://github.com/kwwaleszczynski-del/fly-novelty-scada">fly-novelty-scada</a>.</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"
+        integrity="sha384-cCVCZkAjYNxaYKbM8lsArLznDF/SvMFr1jcZrvOpSTCa0W40ZAdLzHCEulnUa5i7" crossorigin="anonymous"></script>
+<script>
+const D = /*__DATA__*/null;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+const CFG = {displayModeBar: false, responsive: true};
+const fmt = (v, d = 2) => v === null || v === undefined || Number.isNaN(v) ? "-"
+  : (Math.abs(v) < 0.5 * 10 ** -d ? 0 : +v).toFixed(d);
+
+function layout(extra) {
+  const ax = {gridcolor: css("--grid"), linecolor: css("--axis"), zerolinecolor: css("--axis"),
+              tickfont: {color: css("--muted")}, title: {font: {color: css("--ink2")}}};
+  return Object.assign({paper_bgcolor: css("--surface"), plot_bgcolor: css("--surface"),
+    font: {family: FONT, color: css("--ink2"), size: 12}, margin: {l: 60, r: 20, t: 10, b: 45},
+    xaxis: Object.assign({}, ax), yaxis: Object.assign({}, ax), showlegend: false,
+    hoverlabel: {font: {family: FONT}}}, extra || {});
+}
+function color(key) { return css(D.colors[key] || "--neutral"); }
+
+// tiles
+document.getElementById("tiles").innerHTML = D.tiles.map(t =>
+  `<div class="tile"><div class="v">${t.value}</div><div class="l">${t.label}</div></div>`).join("");
+
+// wiring
+const wsel = document.getElementById("wiring");
+Object.keys(D.wiring.matrices).forEach(k => wsel.add(new Option(D.wiring.labels[k], k)));
+function drawWiring() {
+  const k = wsel.value, W = D.wiring;
+  const heat = {type: "heatmap", z: W.matrices[k], x: W.kc_bins, y: W.pn_labels, zmin: 0, zmax: W.zmax,
+    colorscale: [[0, css("--seq0")], [1, css("--seq1")]], xgap: 0, ygap: 0, showscale: true,
+    colorbar: {title: {text: "share", side: "right"}, thickness: 10, outlinewidth: 0, tickfont: {color: css("--ink2")}},
+    hovertemplate: "PN %{y}<br>KC block %{x}<br>%{z:.2f} of KCs connected<extra></extra>"};
+  const shapes = W.class_edges.map(x => ({type: "line", xref: "x", x0: x - 0.5, x1: x - 0.5, yref: "paper", y0: 0,
+    y1: 1, line: {color: css("--ink2"), width: 1, dash: "dot"}}));
+  Plotly.react("matrix", [heat], layout({margin: {l: 110, r: 20, t: 10, b: 40}, shapes: shapes,
+    xaxis: {showgrid: false, tickvals: W.class_ticks.map(c => c[0]), ticktext: W.class_ticks.map(c => c[1]),
+            tickfont: {color: css("--ink2")}},
+    yaxis: {autorange: "reversed", showgrid: false, tickfont: {size: 9, color: css("--muted")}}}), CFG);
+  const deg = W.in_degree[k];
+  Plotly.react("indeg", [{type: "bar", x: deg.map((_, i) => i), y: deg, marker: {color: color(k)},
+    hovertemplate: "%{x} PNs: %{y} KCs<extra></extra>"}], layout({
+    xaxis: {title: {text: "PN partners per KC"}, gridcolor: css("--grid")},
+    yaxis: {title: {text: "KCs"}, gridcolor: css("--grid")}}), CFG);
+  const od = W.out_degree[k];
+  Plotly.react("outdeg", [{type: "scatter", mode: "lines", x: od.map((_, i) => i + 1), y: od,
+    line: {color: color(k), width: 2}, hovertemplate: "rank %{x}: %{y} KCs<extra></extra>"}], layout({
+    xaxis: {title: {text: "PN rank"}, gridcolor: css("--grid")},
+    yaxis: {title: {text: "KC partners per PN"}, gridcolor: css("--grid")}}), CFG);
+}
+wsel.addEventListener("change", drawWiring);
+
+// events
+const esel = document.getElementById("event");
+D.events.forEach((e, i) => esel.add(new Option(e.title, i)));
+function drawEvent() {
+  const e = D.events[+esel.value];
+  document.getElementById("event-desc").textContent = e.subtitle;
+  const heat = {type: "heatmap", z: e.z, x: e.t, y: e.methods, zmin: 0, zmax: 1, xgap: 0, ygap: 2,
+    colorscale: [[0, css("--seq0")], [1, css("--critical")]], showscale: false,
+    hovertemplate: "%{y}<br>%{x}<br>%{z:.0%} of the hour flagged<extra></extra>"};
+  const shapes = [];
+  if (e.window) e.window.forEach(w => shapes.push({type: "line", xref: "x", x0: w, x1: w, yref: "paper", y0: 0, y1: 1,
+    line: {color: css("--ink"), width: 1.5, dash: "dash"}}));
+  const narrow = window.innerWidth < 600;
+  Plotly.react("eventplot", [heat], layout({shapes: shapes, margin: {l: narrow ? 120 : 200, r: 10, t: 10, b: 40},
+    yaxis: {autorange: "reversed", showgrid: false, tickfont: {color: css("--ink2"), size: narrow ? 9 : 12}},
+    xaxis: {showgrid: false}}), CFG);
+}
+esel.addEventListener("change", drawEvent);
+
+// replay
+const R = D.replay;
+document.getElementById("replay-desc").textContent = R.caption;
+let frame = 0, timer = null;
+function drawReplay(n) {
+  const t = R.t.slice(0, n), y = R.smooth.slice(0, n);
+  const shapes = [{type: "line", xref: "paper", x0: 0, x1: 1, y0: R.threshold, y1: R.threshold,
+    line: {color: css("--critical"), width: 1, dash: "dash"}}];
+  if (R.window) shapes.push({type: "rect", xref: "x", x0: R.window[0], x1: R.window[1], yref: "paper", y0: 0, y1: 1,
+    fillcolor: css("--band"), line: {width: 0}, layer: "below"});
+  Plotly.react("replay", [{type: "scatter", mode: "lines", x: t, y: y, line: {color: color("fly_flywire"), width: 2},
+    hovertemplate: "%{x}<br>novelty %{y:.3f}<extra></extra>"}], layout({shapes: shapes,
+    xaxis: {range: [R.t[0], R.t[R.t.length - 1]], gridcolor: css("--grid")},
+    yaxis: {title: {text: "novelty (6 h median)"}, range: [0, R.ymax], gridcolor: css("--grid")}}), CFG);
+  const hours = Math.max(0, n - R.raster_offset);
+  const xs = [], ys = [], cs = [];
+  R.raster.forEach(([h, kcs, ws]) => { if (h < hours) kcs.forEach((k, j) => { xs.push(h); ys.push(k); cs.push(ws[j]); }); });
+  Plotly.react("raster", [{type: "scattergl", mode: "markers", x: xs, y: ys,
+    marker: {size: 3, color: cs, cmin: 0, cmax: 1, colorscale: [[0, css("--neutral")], [1, css("--critical")]]},
+    hovertemplate: "hour %{x}<br>KC %{y}<extra></extra>"}], layout({
+    xaxis: {title: {text: "hours since the start of the prediction section"}, range: [0, R.raster_hours], gridcolor: css("--grid")},
+    yaxis: {title: {text: "Kenyon cell"}, range: [0, R.n_kc], gridcolor: css("--grid")}}), CFG);
+  document.getElementById("replay-clock").textContent = n > 0 ? R.t[Math.min(n, R.t.length) - 1] : "";
+}
+document.getElementById("play").addEventListener("click", () => {
+  if (timer) { clearInterval(timer); timer = null; document.getElementById("play").textContent = "Play"; return; }
+  if (frame >= R.t.length) frame = 0;
+  document.getElementById("play").textContent = "Pause";
+  timer = setInterval(() => { frame = Math.min(R.t.length, frame + 6); drawReplay(frame);
+    if (frame >= R.t.length) { clearInterval(timer); timer = null; document.getElementById("play").textContent = "Play"; } }, 60);
+});
+document.getElementById("reset").addEventListener("click", () => { frame = 0; drawReplay(R.t.length); });
+
+// CARE
+function drawCare() {
+  const M = D.methods;
+  const bars = {type: "bar", x: M.map(m => m.label), y: M.map(m => m.care), marker: {color: M.map(m => color(m.key))},
+    hovertemplate: "%{x}<br>CARE %{y:.3f}<extra></extra>"};
+  const dots = {type: "scatter", mode: "markers", x: [], y: [], marker: {color: css("--ink"), size: 6},
+    hovertemplate: "%{x}<br>seed %{y:.3f}<extra></extra>"};
+  M.forEach(m => (m.seeds || []).forEach(v => { dots.x.push(m.label); dots.y.push(v); }));
+  Plotly.react("care", [bars, dots], layout({margin: {l: 60, r: 20, t: 10, b: 120},
+    shapes: [{type: "line", xref: "paper", x0: 0, x1: 1, y0: 0.5, y1: 0.5, line: {color: css("--ink2"), dash: "dash", width: 1}}],
+    yaxis: {title: {text: "CARE score"}, range: [0, Math.max(0.75, ...M.map(m => m.care)) + 0.03], gridcolor: css("--grid")},
+    xaxis: {tickangle: -35, tickfont: {color: css("--ink2")}}}), CFG);
+  const head = "<tr><th>Method</th><th>CARE</th><th>Faults detected (of 45)</th><th>Normal datasets flagged (of 50)</th>" +
+    "<th>Skill</th><th>Median lead [days]</th><th>False alarm days per dataset</th></tr>";
+  document.getElementById("caretable").innerHTML = head + M.map(m => `<tr><td>${m.label}</td><td>${fmt(m.care, 3)}</td>` +
+    `<td>${fmt(m.detected, m.detected % 1 ? 1 : 0)}</td><td>${fmt(m.normal_flagged, m.normal_flagged % 1 ? 1 : 0)}</td>` +
+    `<td>${fmt(m.skill, 2)}</td><td>${fmt(m.lead, 1)}</td><td>${fmt(m.false_days, 2)}</td></tr>`).join("");
+}
+
+// injection
+function drawInject() {
+  const I = D.injection;
+  const traces = I.methods.map(m => ({type: "bar", name: m.label, x: I.fault_labels, y: m.values,
+    marker: {color: color(m.key), pattern: {shape: m.key.startsWith("fly_res") ? "/" : ""}},
+    hovertemplate: m.label + "<br>%{x}: %{y:.0%}<extra></extra>"}));
+  Plotly.react("inject", traces, layout({barmode: "group", showlegend: true, legend: {orientation: "h", y: -0.15},
+    margin: {l: 60, r: 20, t: 10, b: 70},
+    yaxis: {title: {text: "detected"}, tickformat: ".0%", range: [0, 1], gridcolor: css("--grid")}}), CFG);
+}
+
+// operation
+function drawOps() {
+  const head = "<tr><th>Method</th><th>Model state</th><th>of which learned</th><th>Fit [s]</th>" +
+    "<th>Batch [µs/row]</th><th>One sample [µs]</th><th>Learns online</th></tr>";
+  const kb = b => b >= 1e6 ? (b / 1e6).toFixed(1) + " MB" : (b / 1e3).toFixed(1) + " kB";
+  document.getElementById("cost").innerHTML = head + D.cost.map(c => `<tr><td>${c.method}</td><td>${kb(c.state_bytes)}</td>` +
+    `<td>${kb(c.learned_bytes)}</td><td>${fmt(c.fit_s, 1)}</td><td>${fmt(c.batch_us_per_row, 1)}</td>` +
+    `<td>${fmt(c.single_us, 0)}</td><td>${c.learns_online ? "yes" : "no"}</td></tr>`).join("");
+  const S = D.service;
+  const traces = S.policies.map((p, i) => ({type: "bar", name: S.policy_labels[i], x: S.scenario_labels,
+    y: S.values[p], marker: {color: css(["--neutral", "--c1", "--c2", "--c3"][i])},
+    hovertemplate: S.policy_labels[i] + "<br>%{x}: alarm in %{y:.0%} of the trials<extra></extra>"}));
+  Plotly.react("service", traces, layout({barmode: "group", showlegend: true, legend: {orientation: "h", y: -0.2},
+    margin: {l: 60, r: 20, t: 10, b: 60},
+    yaxis: {title: {text: "trials with an alarm"}, tickformat: ".0%", range: [0, 1], gridcolor: css("--grid")}}), CFG);
+}
+
+function drawAll() { drawWiring(); drawEvent(); drawReplay(R.t.length); drawCare(); drawInject(); drawOps(); }
+drawAll();
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+</script>
+</body>
+</html>
