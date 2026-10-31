@@ -392,4 +392,6 @@ python -m fly_novelty report                # figures, tables and docs/index.htm
 
 Code: MIT (`LICENSE`). `connectome/` is derived from FlyWire data and annotations and is CC BY 4.0, as is
 `docs/img/pn_kc_wiring.png`. Everything in `results/care/` and the data embedded in `docs/index.html` are derived
-from CARE to Compare and are CC BY-SA 4.0. No raw SCADA data or connectome tables are in the repository.
+from CARE to Compare and are CC BY-SA 4.0. No raw SCADA data and none of the raw FlyWire connection or annotation
+tables are in the repository; `connectome/` holds only the derived PN to KC wiring used by the model (149 PNs,
+2,364 KCs, 10,505 edges, see `connectome/stats.json`).
