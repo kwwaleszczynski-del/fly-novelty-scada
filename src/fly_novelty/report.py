@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import textwrap
 from importlib import resources
 from pathlib import Path
 
@@ -93,7 +94,7 @@ def fig_wiring(wiring: connectome.Wiring, out: Path) -> dict:
         ax.grid(False)
         for c in np.flatnonzero(classes[1:] != classes[:-1]) + 1:
             ax.axvline(c / KC_BLOCK - 0.5, color=INK2, lw=0.8, ls=":")
-        ax.set_xlabel("Kenyon cells (blocks of 20; a'/b' | a/b | gamma)")
+        ax.set_xlabel("KC blocks of 20 (a'/b' | a/b | gamma)")
         ax.set_ylabel("projection neuron")
     real_deg = np.bincount(variants["flywire"].sum(axis=1).astype(int))
     axes[1, 0].bar(np.arange(len(real_deg)), real_deg, color=COLORS["fly_flywire"],
@@ -108,6 +109,7 @@ def fig_wiring(wiring: connectome.Wiring, out: Path) -> dict:
                         ls="--" if k == "shuffled" else "-", label=titles[k].split(" (")[0])
     axes[1, 0].set_xlabel("PN partners per KC")
     axes[1, 0].set_ylabel("KCs")
+    axes[1, 0].set_ylim(0, real_deg.max() * 1.18)  # headroom: the legend sat on the tallest bar
     axes[1, 0].legend(fontsize=8, loc="upper left")
     axes[1, 1].legend(fontsize=8)
     axes[1, 1].set_xlabel("PN rank")
@@ -220,11 +222,13 @@ def fig_care(methods: pd.DataFrame, out: Path) -> None:
     for i, (lo, hi) in enumerate(zip(m["care_min"], m["care_max"])):
         if hi > lo:
             ax.plot([lo, hi], [i, i], color=INK, lw=1.2)
-    for i, (c, d, f, hi_) in enumerate(zip(m["care"], m["detected"], m["normal_flagged"], m["care_max"])):
-        ax.text(max(c, hi_) + 0.01, i, f"{c:.3f}   {d:.3g}/45 faults, {f:.3g}/50 normal", va="center",
-                fontsize=8, color=INK2)
+    # values in a fixed column right of every bar, whisker and the 0.5 line, so nothing crosses them
+    col = max(0.55, float(np.nanmax(np.r_[m["care"], m["care_max"]])) + 0.04)
+    for i, (c, d, f) in enumerate(zip(m["care"], m["detected"], m["normal_flagged"])):
+        ax.text(col, i, f"{c:.3f}   {d:.3g}/45 faults, {f:.3g}/50 normal", va="center", fontsize=8, color=INK2)
     ax.axvline(0.5, color=INK2, ls="--", lw=1)
-    ax.set_xlim(0, 0.95)
+    ax.set_xlim(0, col + 0.42)
+    ax.set_xticks(np.arange(0, 0.61, 0.1))
     ax.set_xlabel("CARE score (0.5 = random detector)")
     ax.grid(axis="y", visible=False)
     fig.tight_layout()
@@ -392,6 +396,9 @@ def fig_events(scores_dir: Path, picks: list[tuple[str, int, str]], out: Path) -
             for edge in w:
                 ax.axvline(edge, color=INK, lw=1.2, ls="--")
         ax.xaxis_date()
+        loc = matplotlib.dates.AutoDateLocator(maxticks=8)  # fewer, shorter dates: they overlapped
+        ax.xaxis.set_major_locator(loc)
+        ax.xaxis.set_major_formatter(matplotlib.dates.ConciseDateFormatter(loc))
         ax.set_yticks(range(len(EVENT_METHODS)), labels, fontsize=8)
         ax.grid(False)
         ax.set_title(title, loc="left")
@@ -466,7 +473,8 @@ def fig_mechanism(trace: pd.DataFrame, out: Path) -> None:
     axes[1].set_yscale("log")
     axes[1].set_ylabel("uses of the rarest KC\nin the tag (training)")
     a = trace.attrs
-    axes[0].set_title(f"Wind farm {a['farm']}, dataset {a['event_id']}: {a['description'][:70]}", loc="left")
+    axes[0].set_title(textwrap.fill(f"Wind farm {a['farm']}, dataset {a['event_id']}: {a['description']}", 95),
+                      loc="left")
     axes[1].text(0.01, 0.05, "below the dashed line (about 60 uses, 0.5^60 = 1e-18) the novelty would leave zero",
                  transform=axes[1].transAxes, fontsize=8, color=INK2)
     fig.tight_layout()

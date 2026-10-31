@@ -209,7 +209,7 @@ function drawEvent() {
   if (e.window) e.window.forEach(w => shapes.push({type: "line", xref: "x", x0: w, x1: w, yref: "paper", y0: 0, y1: 1,
     line: {color: css("--ink"), width: 1.5, dash: "dash"}}));
   const narrow = window.innerWidth < 600;
-  Plotly.react("eventplot", [heat], layout({shapes: shapes, margin: {l: narrow ? 120 : 200, r: 10, t: 10, b: 40},
+  Plotly.react("eventplot", [heat], layout({shapes: shapes, margin: {l: narrow ? 120 : 200, r: 30, t: 10, b: 40},
     yaxis: {autorange: "reversed", showgrid: false, tickfont: {color: css("--ink2"), size: narrow ? 9 : 12}},
     xaxis: {showgrid: false}}), CFG);
 }
@@ -235,7 +235,8 @@ function drawReplay(n) {
   Plotly.react("raster", [{type: "scattergl", mode: "markers", x: xs, y: ys,
     marker: {size: 3, color: cs, cmin: 0, cmax: 1, colorscale: [[0, css("--neutral")], [1, css("--critical")]]},
     hovertemplate: "hour %{x}<br>KC %{y}<extra></extra>"}], layout({
-    xaxis: {title: {text: "hours since the start of the prediction section"}, range: [0, R.raster_hours], gridcolor: css("--grid")},
+    xaxis: {title: {text: window.innerWidth < 600 ? "hours into the prediction section" :
+      "hours since the start of the prediction section"}, range: [0, R.raster_hours], gridcolor: css("--grid")},
     yaxis: {title: {text: "Kenyon cell"}, range: [0, R.n_kc], gridcolor: css("--grid")}}), CFG);
   document.getElementById("replay-clock").textContent = n > 0 ? R.t[Math.min(n, R.t.length) - 1] : "";
 }
@@ -250,16 +251,17 @@ document.getElementById("reset").addEventListener("click", () => { frame = 0; dr
 
 // CARE
 function drawCare() {
-  const M = D.methods;
-  const bars = {type: "bar", x: M.map(m => m.label), y: M.map(m => m.care), marker: {color: M.map(m => color(m.key))},
-    hovertemplate: "%{x}<br>CARE %{y:.3f}<extra></extra>"};
+  const M = D.methods, narrow = window.innerWidth < 600;
+  // horizontal bars: the method names are long and ran into each other as angled labels under vertical bars
+  const bars = {type: "bar", orientation: "h", y: M.map(m => m.label), x: M.map(m => m.care),
+    marker: {color: M.map(m => color(m.key))}, hovertemplate: "%{y}<br>CARE %{x:.3f}<extra></extra>"};
   const dots = {type: "scatter", mode: "markers", x: [], y: [], marker: {color: css("--ink"), size: 6},
-    hovertemplate: "%{x}<br>seed %{y:.3f}<extra></extra>"};
-  M.forEach(m => (m.seeds || []).forEach(v => { dots.x.push(m.label); dots.y.push(v); }));
-  Plotly.react("care", [bars, dots], layout({margin: {l: 60, r: 20, t: 10, b: 120},
-    shapes: [{type: "line", xref: "paper", x0: 0, x1: 1, y0: 0.5, y1: 0.5, line: {color: css("--ink2"), dash: "dash", width: 1}}],
-    yaxis: {title: {text: "CARE score"}, range: [0, Math.max(0.75, ...M.map(m => m.care)) + 0.03], gridcolor: css("--grid")},
-    xaxis: {tickangle: -35, tickfont: {color: css("--ink2")}}}), CFG);
+    hovertemplate: "%{y}<br>seed %{x:.3f}<extra></extra>"};
+  M.forEach(m => (m.seeds || []).forEach(v => { dots.y.push(m.label); dots.x.push(v); }));
+  Plotly.react("care", [bars, dots], layout({margin: {l: narrow ? 175 : 230, r: 12, t: 10, b: 46},
+    shapes: [{type: "line", yref: "paper", y0: 0, y1: 1, x0: 0.5, x1: 0.5, line: {color: css("--ink2"), dash: "dash", width: 1}}],
+    xaxis: {title: {text: "CARE score"}, range: [0, Math.max(0.75, ...M.map(m => m.care)) + 0.03], gridcolor: css("--grid")},
+    yaxis: {autorange: "reversed", tickfont: {color: css("--ink2"), size: narrow ? 9 : 12}}}), CFG);
   const head = "<tr><th>Method</th><th>CARE</th><th>Faults detected (of 45)</th><th>Normal datasets flagged (of 50)</th>" +
     "<th>Skill</th><th>Median lead [days]</th><th>False alarm days per dataset</th></tr>";
   document.getElementById("caretable").innerHTML = head + M.map(m => `<tr><td>${m.label}</td><td>${fmt(m.care, 3)}</td>` +
@@ -273,8 +275,13 @@ function drawInject() {
   const traces = I.methods.map(m => ({type: "bar", name: m.label, x: I.fault_labels, y: m.values,
     marker: {color: color(m.key), pattern: {shape: m.key.startsWith("fly_res") ? "/" : ""}},
     hovertemplate: m.label + "<br>%{x}: %{y:.0%}<extra></extra>"}));
-  Plotly.react("inject", traces, layout({barmode: "group", showlegend: true, legend: {orientation: "h", y: -0.15},
-    margin: {l: 60, r: 20, t: 10, b: 70},
+  // on a phone the fault names and the long method legend need their own room below the bars
+  const narrow = window.innerWidth < 600;
+  document.getElementById("inject").style.height = narrow ? "640px" : "400px";
+  Plotly.react("inject", traces, layout({barmode: "group", showlegend: true,
+    legend: narrow ? {orientation: "h", yanchor: "top", y: -0.4, font: {size: 10}} : {orientation: "h", y: -0.15},
+    margin: {l: 60, r: 20, t: 10, b: narrow ? 300 : 70},
+    xaxis: Object.assign(layout().xaxis, narrow ? {tickangle: -90} : {}),
     yaxis: {title: {text: "detected"}, tickformat: ".0%", range: [0, 1], gridcolor: css("--grid")}}), CFG);
 }
 
@@ -290,8 +297,12 @@ function drawOps() {
   const traces = S.policies.map((p, i) => ({type: "bar", name: S.policy_labels[i], x: S.scenario_labels,
     y: S.values[p], marker: {color: css(["--neutral", "--c1", "--c2", "--c3"][i])},
     hovertemplate: S.policy_labels[i] + "<br>%{x}: alarm in %{y:.0%} of the trials<extra></extra>"}));
-  Plotly.react("service", traces, layout({barmode: "group", showlegend: true, legend: {orientation: "h", y: -0.2},
-    margin: {l: 60, r: 20, t: 10, b: 60},
+  const narrow = window.innerWidth < 600;
+  document.getElementById("service").style.height = narrow ? "540px" : document.getElementById("service").style.height;
+  Plotly.react("service", traces, layout({barmode: "group", showlegend: true,
+    legend: narrow ? {orientation: "h", yanchor: "top", y: -0.5, font: {size: 10}} : {orientation: "h", y: -0.2},
+    margin: {l: 60, r: 20, t: 10, b: narrow ? 240 : 60},
+    xaxis: Object.assign(layout().xaxis, narrow ? {tickangle: -90} : {}),
     yaxis: {title: {text: "trials with an alarm"}, tickformat: ".0%", range: [0, 1], gridcolor: css("--grid")}}), CFG);
 }
 
